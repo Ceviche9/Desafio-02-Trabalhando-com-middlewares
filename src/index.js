@@ -10,19 +10,82 @@ app.use(cors());
 const users = [];
 
 function checksExistsUserAccount(request, response, next) {
-  // Complete aqui
+  const { username } = request.headers;
+
+  const user = users.find(user => user.username === username);
+
+  if(!user) {
+    return response.status(404).json({error: "User not found!"});
+  }
+
+  request.user = user;
+
+  return next();
 }
 
 function checksCreateTodosUserAvailability(request, response, next) {
-  // Complete aqui
+  const { user } = request;
+
+  if(!user) {
+    return response.status(404).json({error: "User not found!"});
+  }
+
+  if(user.todos) {
+    const todosRegisteredNumber = user.todos.length;
+    const isPro = user.pro;
+  
+    if(isPro === false && todosRegisteredNumber < 10) {
+      return next();
+    }
+  
+    if(isPro === true) {
+      return next()
+    }
+
+    return response.status(403).json({error: "User has reached the limit of the free plan"})
+  }
+  
+  return next();
 }
 
 function checksTodoExists(request, response, next) {
-  // Complete aqui
+  const { username} = request.headers;
+  const { id } = request.params;
+
+  const user = users.find(user => user.username === username);
+
+  if(!user) {
+    return response.status(404).json({error: "User not found!"});
+  }
+  
+  const isValid = validate(id);
+  
+  if(!isValid) return response.status(400).json({error: "Invalid Id"});
+  
+  const idBelongsToUser = user.todos.some(todos => todos.id === id);
+  
+  if(!idBelongsToUser) return response.status(404).json({error: "This To do does not belong to the user"});
+  
+  const todo = user.todos.find(todo => todo.id === id);
+  
+  if(!todo) return response.status(404).json({error: "To Do does not exists!"});
+  
+  request.user = user;
+  request.todo = todo;
+
+  return next();
 }
 
 function findUserById(request, response, next) {
-  // Complete aqui
+  const { id } = request.params;
+
+  const user = users.find(user => user.id === id);
+
+  if(!user) return response.status(404).json({error: "User not found"})
+
+  request.user = user;
+
+  return next();
 }
 
 app.post('/users', (request, response) => {
@@ -57,7 +120,7 @@ app.patch('/users/:id/pro', findUserById, (request, response) => {
   const { user } = request;
 
   if (user.pro) {
-    return response.status(400).json({ error: 'Pro plan is already activated.' });
+    return response.status(404).json({ error: 'Pro plan is already activated.' });
   }
 
   user.pro = true;
